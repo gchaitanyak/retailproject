@@ -231,7 +231,6 @@ const T = {
 
 // ─── STYLES ───
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap');
 :root {
   --bg:#0a0a0f; --bg2:#12121a; --bg3:#1a1a2e; --card:#16162a;
   --text:#e8e8f0; --text2:#a0a0b8; --accent:#f59e0b; --accent2:#fb923c;
@@ -297,13 +296,13 @@ body,html{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text)
 .pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;align-items:start;}
 .price-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:32px;position:relative;}
 .price-card.popular{border-color:var(--accent);box-shadow:0 0 40px rgba(245,158,11,0.15);}
-.price-card.popular::before{content:'Star Popular';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--grad1);color:#000;font-size:12px;font-weight:700;padding:4px 16px;border-radius:12px;}
+.price-card.popular::before{content:'⭐ Popular';position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--grad1);color:#000;font-size:12px;font-weight:700;padding:4px 16px;border-radius:12px;}
 .price-name{font-size:22px;font-weight:700;margin-bottom:8px;}
 .price-amt{font-size:40px;font-weight:800;}
 .price-amt span{font-size:16px;font-weight:400;color:var(--text2);}
 .price-feat{list-style:none;margin:24px 0;}
 .price-feat li{padding:8px 0;border-bottom:1px solid var(--border);font-size:14px;color:var(--text2);}
-.price-feat li::before{content:'checkmark ';color:var(--green);font-weight:700;}
+.price-feat li::before{content:'✓ ';color:var(--green);font-weight:700;}
 .price-btn{width:100%;padding:14px;border-radius:var(--radius);border:none;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;}
 .price-btn.primary{background:var(--grad1);color:#000;}
 .price-btn.secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border);}
@@ -394,6 +393,8 @@ body,html{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text)
 .login-switch{text-align:center;margin-top:20px;font-size:14px;color:var(--text2);}
 .login-switch a{color:var(--accent);cursor:pointer;text-decoration:none;font-weight:600;}
 
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px;}
+
 @media(max-width:768px){
   .nav-links{display:none;}
   .gen-row{grid-template-columns:1fr;}
@@ -440,7 +441,7 @@ function Nav({ page, setPage, lang, setLang, t }) {
       <div className="nav-inner">
         <div className="nav-brand" onClick={() => setPage('home')}>{t.brand} ✦</div>
         <div className="nav-links">
-          {['home', 'gen', 'feat', 'price', 'about', 'test', 'login'].map((p) => (
+          {['home', 'gen', 'feat', 'price', 'about', ...(import.meta.env.DEV ? ['test'] : []), 'login'].map((p) => (
             <button key={p} className={`nav-link ${page === p ? 'active' : ''}`} onClick={() => setPage(p)}>
               {t.nav[p]}
             </button>
@@ -576,6 +577,10 @@ function GeneratorPage({ t, lang }) {
           }],
         }),
       });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error?.message || `API error ${response.status}`);
+      }
       const data = await response.json();
       const text = data.content?.map((c) => c.text || '').join('\n') || 'Content generation completed.';
       setResult(text);
@@ -591,10 +596,14 @@ function GeneratorPage({ t, lang }) {
     setLoading(false);
   };
 
-  const copyText = () => {
-    navigator.clipboard?.writeText(result);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copyText = async () => {
+    try {
+      await navigator.clipboard.writeText(result);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard unavailable — silently skip */
+    }
   };
 
   const downloadText = () => {
@@ -641,7 +650,8 @@ function GeneratorPage({ t, lang }) {
         </div>
         <div className="gen-field">
           <label>{t.gen.prompt}</label>
-          <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={t.gen.ph} />
+          <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={t.gen.ph} maxLength={2000} />
+        <div style={{ textAlign: 'right', fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>{prompt.length}/2000</div>
         </div>
         <button className="gen-btn" onClick={generate} disabled={loading || !prompt.trim()}>
           {loading ? t.gen.loading : t.gen.go}
@@ -844,10 +854,10 @@ function LoginPage({ t }) {
         <div className="login-card">
           <h2>{r.title}</h2>
           <p className="login-sub">{r.sub2}</p>
-          <div className="login-field"><label>{r.name}</label><input type="text" /></div>
-          <div className="login-field"><label>{r.email}</label><input type="email" /></div>
-          <div className="login-field"><label>{r.pass}</label><input type="password" /></div>
-          <div className="login-field"><label>{r.confirm}</label><input type="password" /></div>
+          <div className="login-field"><label htmlFor="reg-name">{r.name}</label><input id="reg-name" type="text" autoComplete="name" /></div>
+          <div className="login-field"><label htmlFor="reg-email">{r.email}</label><input id="reg-email" type="email" autoComplete="email" /></div>
+          <div className="login-field"><label htmlFor="reg-pass">{r.pass}</label><input id="reg-pass" type="password" autoComplete="new-password" /></div>
+          <div className="login-field"><label htmlFor="reg-confirm">{r.confirm}</label><input id="reg-confirm" type="password" autoComplete="new-password" /></div>
           <button className="login-btn">{r.btn}</button>
           <div className="login-switch">{r.hasAcc} <a onClick={() => setMode('login')}>{r.signIn}</a></div>
         </div>
@@ -860,8 +870,8 @@ function LoginPage({ t }) {
       <div className="login-card">
         <h2>{l.title}</h2>
         <p className="login-sub">{l.sub2}</p>
-        <div className="login-field"><label>{l.email}</label><input type="email" /></div>
-        <div className="login-field"><label>{l.pass}</label><input type="password" /></div>
+        <div className="login-field"><label htmlFor="login-email">{l.email}</label><input id="login-email" type="email" autoComplete="email" /></div>
+        <div className="login-field"><label htmlFor="login-pass">{l.pass}</label><input id="login-pass" type="password" autoComplete="current-password" /></div>
         <div className="login-forgot"><a>{l.forgot}</a></div>
         <button className="login-btn">{l.btn}</button>
         <div className="login-divider">{l.or}</div>
@@ -907,7 +917,12 @@ export default function TalaashApp() {
   const [page, setPage] = useState('home');
   const t = T[lang] || T.en;
 
+  React.useEffect(() => { document.documentElement.lang = lang; }, [lang]);
+
   const changePage = (p) => { setPage(p); window.scrollTo(0, 0); };
+
+  const pageTitle = { home: 'Talaash — AI Content Engine for India', gen: 'Generator | Talaash', feat: 'Features | Talaash', price: 'Pricing | Talaash', about: 'About | Talaash', test: 'Testing | Talaash', login: 'Login | Talaash' };
+  React.useEffect(() => { document.title = pageTitle[page] || 'Talaash'; }, [page]);
 
   return (
     <div className="talaash-app">
